@@ -1,0 +1,23 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run GMod",
+            "type": "process",
+            "command": "../../../bin/win64/gmod.exe",
+            "args": ["-noworkshop", "-console", "-multirun", "-allowdebug", "+sv_lan 1",
+                "+maxplayers 10", "+map generatorroom" /*,"+gamemode starcraftfacingterror"*/],
+            "group": {"kind": "build", "isDefault": true},
+            "presentation": {
+                "reveal": "always",
+                "echo": true,
+                "close": true,
+                "focus": true,
+                "panel": "shared",
+                "clear": true
+            }
+        }
+    ],
+}

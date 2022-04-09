@@ -6,7 +6,6 @@ local _RenderSize = Vector(_ChunkSize*_CellSize,_ChunkSize*_CellSize,4096)
 
 function ENT:Initialize()
 	self:SetRenderBounds(Vector(),_RenderSize)
-//	self:SetRenderAngles(Angle(360,360,360))
 	local data = TERRA.Chunks["__await"][id]
 	TERRA.Chunks[self:EntIndex()] = self
 	if data then
@@ -50,6 +49,7 @@ function ENT:Draw()
 		cam.PopModelMatrix()
 	end
 	//render.SetLightingMode(0)
+
 	render.SetColorMaterial()
 	render.DrawWireframeBox(self:GetPos(),self:GetAngles(),Vector(),_RenderSize,Color(0,255,0),true)
 end

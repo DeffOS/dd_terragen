@@ -10,10 +10,12 @@ local ChunkVertCount = TERRA_CHUNK_SIZE+1
 local FlipOrder = TERRA_FLIPORDER
 local LightmapSize = 4096
 
-net.Receive("DD_TERRA_CL_SendTerrain",function()
+TERRA_WORLD = nil
+
+net.Receive("DD_TERRA_CL_SendTerrain",function() // DEPRICATED: Use Async Loading
 	print("Receiving")
 	local world = net.ReadTerraTerrain()
-	//PrintTable(world)
+	TERRA_WORLD = world
 end)
 
 do
@@ -22,6 +24,76 @@ do
 		RT_SIZE_LITERAL,MATERIAL_RT_DEPTH_NONE,
 		1,0,IMAGE_FORMAT_RGB565)
 	end
+	net.Receive("DD_TERRA_CL_StartTerrainBus",function()
+		print(TERRA_WORLD)
+		if TERRA_WORLD then print(TERRA_WORLD:IsLoading()) end
+		if TERRA_WORLD and TERRA_WORLD:IsLoading() then return end
+		local pos = net.ReadVector()
+		local sx,sy = net.ReadUInt(10),net.ReadUInt(10)
+		local verts = {}
+		local chunks = {}
+		local class = setmetatable({
+			["Lightmap"] = CreateLightMap(LightmapSize,LightmapSize),
+			["Position"] = pos,
+			["Size"] = {sx,sy},
+			["__verts"] = verts,
+			["__chunks"] = chunks,
+			["__loading"] = true,
+		},TERRATERRAIN)
+		TERRA_WORLD = class
+		print(sx,sy,pos)
+		local isx,isy = sx*ChunkSize*TERRA_TEXEL_PER_PATCH,sy*ChunkSize*TERRA_TEXEL_PER_PATCH
+		render.PushRenderTarget( class["Lightmap"] )
+		cam.Start2D()
+			draw.NoTexture()
+			surface.SetDrawColor( Color(192,192,192,255) )
+			surface.DrawRect(0,0,isx,isy)
+			surface.SetDrawColor( Color(164,164,164,255) )
+			for x=1,isx,1 do
+				if x%2==0 then
+					surface.DrawLine(x,0,x,isy)
+				end
+			end
+		cam.End2D()
+		render.PopRenderTarget()
+
+		class["__thread"] = coroutine.create(function()
+			local vertpacksize = TERRA_VERTEX_SEND_MAX
+			local vertcount = 0
+			for x=1,ChunkSize*sx+1,1 do
+				verts[x] = {}
+				for y=1,ChunkSize*sy+1,1 do
+					verts[x][y] = net.ReadTerraVertex(class,x,y)
+					vertcount = vertcount + 1
+					if vertcount >= vertpacksize then
+						vertcount = 0
+						coroutine.yield()
+					end
+				end
+			end
+			coroutine.yield()
+			local chunkpacksize = TERRA_CHUNK_SEND_MAX
+			local chunkcount = 0
+			for x=1,sx,1 do
+				chunks[x] = {}
+				for y=1,sy,1 do
+					local chunk = net.ReadTerraChunk(class,x,y)
+					chunks[x][y] = chunk
+					chunkcount = chunkcount + 1
+					if chunkcount >= chunkpacksize then
+						chunkcount = 0
+						coroutine.yield()
+					end
+				end
+			end
+			class["__loading"] = false
+		end)
+	end)
+
+	net.Receive("DD_TERRA_CL_TerrainBus",function()
+		if TERRA_WORLD and !TERRA_WORLD:IsLoading() then return end
+		coroutine.resume(TERRA_WORLD["__thread"])
+	end)
 	function net.ReadTerraTerrain()
 		local pos = net.ReadVector()
 		local sx,sy = net.ReadUInt(10),net.ReadUInt(10)
@@ -35,6 +107,7 @@ do
 			["Size"] = {sx,sy},
 			["__verts"] = verts,
 			["__chunks"] = chunks,
+			["__loading"] = false,
 		},TERRATERRAIN)
 		for x=1,ChunkSize*sx+1,1 do
 			verts[x] = {}
@@ -64,6 +137,7 @@ do
 
 		return class
 	end
+	function TERRATERRAIN:IsLoading() return self["__loading"] end
 	function TERRATERRAIN:GetLightmap() return self["Lightmap"] end
 	function TERRATERRAIN:GetLightmapUVStep() return self["LightmapUVStep"] end
 	function TERRATERRAIN:RegenerateLightmap()
@@ -144,7 +218,6 @@ do
 			Invert = net.ReadBool(),
 		},TERRAPATCH)
 	end
-	//print("AAAAA",TERRAPATCH)
 	function TERRAPATCH:Mesh()
 		local invert = self:IsInverted()
 		if FlipOrder[self["x"]][self["y"]] then
@@ -194,7 +267,6 @@ do
 		Normal(_nCap)
 		TexCoord(0,self:GetUVs())
 		TexCoord(1,self:GetLightUV())
-		//print(self:GetLightUV())
 		//TexCoord(2,0,0)
 		Color(255,255,255,invert and 255-self:GetAlpha() or self:GetAlpha())
 		AdvanceVertex()

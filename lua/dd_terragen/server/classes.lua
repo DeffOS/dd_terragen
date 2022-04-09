@@ -1,3 +1,5 @@
+util.AddNetworkString("DD_TERRA_CL_StartTerrainBus")
+util.AddNetworkString("DD_TERRA_CL_TerrainBus")
 local TERRATERRAIN = debug.getregistry()["DD_TerraTerrain"]
 local TERRACHUNK = debug.getregistry()["DD_TerraChunk"]
 local TERRAPATCH = debug.getregistry()["DD_TerraPatch"]
@@ -79,6 +81,59 @@ do
 		end
 		net.Broadcast()
 	end
+
+	function TERRATERRAIN:SendAsync(ply)
+		//if hook.GetTable()["Think"] and hook.GetTable()["Think"]["DDTERRA_TerrainAsyncSend"] then return end
+		net_Start = function() net.Start("DD_TERRA_CL_TerrainBus") end
+		net_Send = ply and function() net.Send(ply) end or net.Broadcast
+		local thread = coroutine.create(function()
+			net.Start("DD_TERRA_CL_StartTerrainBus")
+				net.WriteVector(self["Position"])
+				local sx,sy = self["Size"][1],self["Size"][2]
+				net.WriteUInt(sx,10)
+				net.WriteUInt(sy,10)
+			net_Send()
+			coroutine.wait(.1)
+			net_Start()
+			local verts = self["__verts"]
+			local vertpacksize = TERRA_VERTEX_SEND_MAX
+			local vertcount = 0
+			for x=1,ChunkSize*sx+1,1 do
+				for y=1,ChunkSize*sy+1,1 do
+					verts[x][y]:Send()
+					vertcount = vertcount + 1
+					if vertcount >= vertpacksize then
+						vertcount = 0
+						net_Send()
+						coroutine.wait(.1)
+						net_Start()
+					end
+				end
+			end
+			net_Send()
+			coroutine.wait(.1)
+			net_Start()
+				local chunks = self["__chunks"]
+				local chunkpacksize = TERRA_CHUNK_SEND_MAX
+				local chunkcount = 0
+				for x=1,sx,1 do
+					for y=1,sy,1 do
+						print(chunkcount,x,y,sx,sy)
+						chunks[x][y]:Send()
+						chunkcount = chunkcount + 1
+						if chunkcount >= chunkpacksize then
+							chunkcount = 0
+							net_Send()
+							coroutine.wait(.1)
+							net_Start()
+						end
+					end
+				end
+			net_Send()
+			hook.Remove("Think","DDTERRA_TerrainAsyncSend")
+		end)
+		hook.Add("Think","DDTERRA_TerrainAsyncSend",function() coroutine.resume(thread) end)
+	end
 	function TERRATERRAIN:Dispose()
 		local sx,sy = self["Size"][1],self["Size"][2]
 		for x=1,sx,1 do
@@ -108,7 +163,6 @@ do
 			for x=1,ChunkVertCount,1 do
 				verts[x] = {}
 				for y=1,ChunkVertCount,1 do
-					//print(gvx,gvy,x,y,#terrain["__verts"],#terrain["__verts"][1])
 					verts[x][y] = terrain:GetVertex(gvx+x,gvy+y)
 				end
 			end
@@ -127,7 +181,8 @@ do
 		return res
 	end
 	function TERRACHUNK:Send()
-		net.WriteEntity(self["Entity"])
+		print("Sending Chunk",self["Entity"])
+		net.WriteUInt(self["Entity"]:EntIndex(),16)
 		local patches = self["__patches"]
 		for x=1,ChunkSize,1 do
 			for y=1,ChunkSize,1 do
@@ -136,9 +191,7 @@ do
 		end
 	end
 	function TERRACHUNK:Dispose()
-		print("Removing chunk",self["Entity"])
 		self["Entity"]:Remove()
-		print(self["Entity"])
 	end
 end
 
@@ -152,7 +205,7 @@ do
 			v3 = world:GetVertex(x,y+1),
 			v4 = world:GetVertex(x+1,y+1),
 			Solid = true,
-			MatID = 1,
+			MatID = 3,
 			Invert = false,
 		},TERRAPATCH)
 	end
@@ -165,10 +218,10 @@ end
 
 do
 	require("dd_noise")
-	local noise = DDNoises.Simplex(.06,1)
+	local noise = DDNoises.Simplex(.02,1)
 	function TERRA.CreateVertex(x,y)
 		return setmetatable({
-			["Position"] = Vector((x-1)*VertSize,(y-1)*VertSize,(noise:Fractal(2,x,y)+1)*512),
+			["Position"] = Vector((x-1)*VertSize,(y-1)*VertSize,(noise:Fractal(4,x,y)+1)*1024),
 			["Alpha"] = math.Clamp(-noise:Fractal(2,x,y)+0.5,0,1)*255,//255,
 			//["Bright"] = net.ReadUInt(8)
 		},TERRAVERT)

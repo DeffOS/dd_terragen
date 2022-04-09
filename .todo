@@ -1,5 +1,6 @@
-Инструмент:
-	☐ Теоретическое редактирование
-	☐ Мировая позиция к позиции ячейки
-Передача пакетов:
-	☐ Сделать автобус данных чанков и вертексов
+Tools:
+	☐ Theoretical terrain editing
+	☐ World pos to terrain chunk/patch/vertex positions
+Network:
+	✔ Net Bus for vertecies and chunks @done(22-04-09 16:51)
+	☐ Send individual chunk changes

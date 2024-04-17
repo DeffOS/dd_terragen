@@ -34,6 +34,7 @@ do
 	function POINT:Update()
 		local chunks = GetPointChunks(self)
 		local chunk
+
 		for i = 1,chunks._count do
 			chunk = chunks[i]
 
@@ -73,7 +74,8 @@ do
 
 	function POINT:Update()
 		sh_Update(self)
-		// TODO: Update Normals HERE
+		local x,y = self.X,self.Y
+		self:CalculateNormal((Points:GetSafe(x,y + 1) || self).pos,(Points:GetSafe(x + 1,y) || self).pos,(Points:GetSafe(x,y - 1) || self).pos,(Points:GetSafe(x - 1,y) || self).pos)
 	end
 end
 
@@ -106,6 +108,6 @@ do
 		Add(cr1,cr2)
 		Div(cr1,2)
 		Nrm(cr1)
-		Set(result,cr1)
+		Set(self.normal,cr1)
 	end
 end

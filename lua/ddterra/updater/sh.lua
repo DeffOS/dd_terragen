@@ -1,13 +1,13 @@
 local ceil = math.ceil
 local log = math.log
-local remove = table.remove
 gameevent.Listen( "OnRequestFullUpdate" )
 module("ddterra",package.seeall)
 REQUEST_FULLUPDATE = 0
+REQUEST_BRUSHCHANGE = 1
+REQUEST_BRUSHSETTINGS = 2
 UPDTYPE_POINT = 1
 UPDTYPE_CELL = 2
 NetUInt_Index = ceil(log((WorldCellCount + 1) ^ 2,2))
-
 
 do
 	local TimerBody
@@ -40,36 +40,3 @@ do
 		timer.Remove(updTimer)
 	end
 end
-
-if SERVER then return end
-
-local typeSwitch = {
-	[UPDTYPE_POINT] = function()
-		local point = Points[net.ReadUInt(NetUInt_Index)]
-		point:ReadNet()
-		point:Update()
-	end,
-	[UPDTYPE_CELL] = function()
-		Cells[net.ReadUInt(NetUInt_Index)]:ReadNet()
-	end,
-}
-
-net.Receive("ddterra.netchannel",function(len)
-	local type = net.ReadUInt(3)
-	local func = typeSwitch[type]
-	if len <= 0 or !func then return end
-	local count = net.ReadUInt(14)
-	print("Receiving Net Update",type,count,len)
-	for i = 1,count do
-		func()
-	end
-end)
-
-hook.Add( "OnRequestFullUpdate", "ddterra.fixBounds", function( data )
-	local chunks = Chunks
-	for i = 0, chunks._count - 1 do
-		local chunk = chunks[i]
-		if !chunk:IsEntityValid() then continue end
-		chunk.Entity:InitBounds()
-	end
-end)

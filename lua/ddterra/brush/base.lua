@@ -19,17 +19,17 @@ function BRUSH:GetOwner()
 	return self.e_toolwep:GetOwner()
 end
 
-function BRUSH:StartStroke(x,y)
+function BRUSH:StartStroke(trc)
 end
 
-function BRUSH:UpdateStroke(x,y)
+function BRUSH:UpdateStroke(trc)
 end
 
-function BRUSH:EndStroke(x,y)
+function BRUSH:EndStroke(trc)
 end
 
 // Clientside - Used for 3d preview of brush
-function BRUSH:Preview(pos)
+function BRUSH:Preview(trc)
 end
 
 return BRUSH

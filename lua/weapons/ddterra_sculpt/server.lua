@@ -1,27 +1,23 @@
-// print("Bunga")
-local points = {}
-SWEP.bStroking = false
+SWEP.b_Stroking = false
 
 function SWEP:PrimaryAttack()
+	if self.b_Stroking then return end
+	self.b_Stroking = true
+	local ply = self:GetOwner()
+	self.Brush:StartStroke(ply:GetEyeTrace())
+end
+
+function SWEP:Think()
 	local ply = self:GetOwner()
 
-	if !self.bStroking then
-		self.bStroking = true
-	end
+	if self.b_Stroking then
+		local trc = ply:GetEyeTrace()
 
-	local tr = ply:GetEyeTrace()
-	local x,y = ddterra.PosToIndex(tr.HitPos)
-	local brush = self.Brush
-	if brush.SX == x && brush.SY == y then return end
-	local rad = self:GetRadius()
-	points = ddterra.GetPointsInRadius(x,y,rad,points)
-	local center = ddterra.Points:Get(x,y)
-	brush:StartStroke(center,rad,128)
-
-	for i = 1,points._count do
-		local point = points[i]
-		if !point then continue end
-		point:ApplyChanges(brush:Process(point,ply:KeyDown(IN_SPEED)))
+		if ply:KeyDown(IN_ATTACK) then
+			self.Brush:UpdateStroke(trc)
+		else
+			self.Brush:EndStroke(trc)
+			self.b_Stroking = false
+		end
 	end
-	// ApplyChanges
 end

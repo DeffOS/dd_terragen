@@ -1,6 +1,6 @@
-module("ddterra",package.seeall)
+module("ddterra.brushes",package.seeall)
 
-function OpenBrushMenu(tool)
+function OpenMenu(tool)
 	local brush = tool.Brush
 
 end

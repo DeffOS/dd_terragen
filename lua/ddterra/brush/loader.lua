@@ -3,15 +3,16 @@ local format = string.format
 local inherit = table.Inherit
 local rawget = rawget
 local type = type
-module("ddterra",package.seeall)
+module("ddterra.brushes",package.seeall)
 AddCSLuaFile("base.lua")
-local baseBrush = include("base.lua")
+BaseBrush = include("base.lua")
+BaseBrush.__index = BaseBrush
 Brushes = Brushes || {}
 
 local function LoadBrushes()
 	local brushes = {
 		_list = {
-			base = baseBrush
+			base = BaseBrush
 		}
 	}
 
@@ -23,7 +24,6 @@ local function LoadBrushes()
 			local filepath = path .. name
 			AddCSLuaFile(filepath)
 			local brush = include(filepath)
-			brush.__index = brush
 			local className = name:lower():sub(0,-5)
 			brush.ClassName = className
 			brushes._list[className] = brush
@@ -32,7 +32,7 @@ local function LoadBrushes()
 	end
 
 	for _,brush in ipairs(brushes) do
-		local base = brush.Base
+		local base = brush.Base || "base"
 		assert(base,format("Brush (%s) has no base brush!",brush.ClassName))
 		base = brushes._list[base]
 		assert(base,format("Brush (%s) has non-existant base brush (%s)!",brush.ClassName,brush.Base))
@@ -59,6 +59,8 @@ function GetNewBrush(class,old)
 	assert(brush,format("Brush (%s) doesnt exist!",class))
 	local meta = {}
 	solveParent(meta,brush,{})
+	meta.__index = meta
+	meta.Abstract = nil
 	old = old || {}
 	local new = {}
 
@@ -75,7 +77,3 @@ function GetNewBrush(class,old)
 
 	return setmetatable(new,meta)
 end
-
-AddCSLuaFile("menu.lua")
-if SERVER then return end
-include("menu.lua")

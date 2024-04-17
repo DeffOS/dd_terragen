@@ -150,3 +150,25 @@ do
 		net.Abort()
 	end
 end
+
+local requestSwitch = {
+	[REQUEST_BRUSHCHANGE] = function(ply)
+		local tool = ply:GetWeapon("ddterra_sculpt")
+		if !IsValid(tool) then return end
+		tool:SetBrushType(net.ReadString())
+	end,
+	[REQUEST_BRUSHSETTINGS] = function(ply)
+		local tool = ply:GetWeapon("ddterra_sculpt")
+		if !IsValid(tool) then return end
+		local tab = util.TableToJSON(net.ReadTable())
+		if !tab then return end
+		tool:SetBrushSettings(tab)
+	end
+}
+
+net.Receive("ddterra.netchannel",function(len,ply)
+	local requestType = net.ReadUInt(3)
+	local func = requestSwitch[requestType]
+	if !func then return end
+	func(ply)
+end)

@@ -1,4 +1,5 @@
 SWEP.Spawnable = true
+SWEP.AdminOnly = true
 SWEP.ViewModel = "models/weapons/c_toolgun.mdl"
 SWEP.UseHands = true
 
@@ -6,7 +7,7 @@ SWEP.Primary = {
 	Ammo = "none",
 	ClipSize = -1,
 	DefaultClip = -1,
-	Automatic = true,
+	Automatic = false,
 }
 
 SWEP.Secondary = SWEP.Primary
@@ -15,31 +16,44 @@ SWEP.SecondaryAttack = SWEP.PrimaryAttack
 
 function SWEP:SetupDataTables()
 	self:NetworkVar( "String", 0, "BrushType" )
-	self:NetworkVar( "Int", 0, "Radius" )
-	self:NetworkVar( "Int", 1, "Force" )
-
-	if SERVER then
-		self:SetBrushType("radial")
-		self:SetRadius(4)
-		self:SetForce(128)
-	end
-
+	self:NetworkVar( "String", 1, "BrushSettings" )
 	self:NetworkVarNotify( "BrushType", self.OnBrushTypeChanged )
+	self:NetworkVarNotify( "BrushSettings", self.OnBrushSettingsChanged )
 end
 
 SWEP.Brush = {}
 
 function SWEP:Initialize()
-	self.Brush = {}
-	self:OnBrushTypeChanged(nil,nil,"radial")
+	self.Brush = setmetatable({},ddterra.brushes.BaseBrush)
+	-- PrintTable(getmetatable(self.Brush))
+	if SERVER then return end
+	ddterra.RequestBrushChange("radial")
+end
+function SWEP:OnReloaded()
+	if SERVER then return end
+	ddterra.RequestBrushChange("radial")
 end
 
 function SWEP:OnBrushTypeChanged(_,old,new)
-	local meta = ddterra.GetBrush(new)
-	if !meta then return end
+	print("Setting new brush",new)
+	local brush = ddterra.brushes.GetNewBrush(new,self.Brush)
+	if !brush then return end
+	rawset(brush,"e_toolwep",self)
+	self.Brush = brush
+end
+
+function SWEP:OnBrushSettingsChanged(_,old,new)
+	print("Setting new brush settings",new)
 	local brush = self.Brush
-	setmetatable(brush,meta)
-	brush:Setup(self:GetRadius(),self:GetForce())
+	local settings = util.JSONToTable(new)
+	assert(settings,"Failed to load brush settings!")
+	for _, prop in ipairs(brush.Properties) do
+		local varname = prop[1]
+		local var = settings[varname]
+		if var then
+			rawset(brush,varname,var)
+		end
+	end
 end
 
 if SERVER then
@@ -49,42 +63,18 @@ if SERVER then
 end
 
 SWEP.Category = "DD Terrain"
-local pointCol = Color(64,0,0)
-local pointNewCol = Color(255,0,0)
-local centerCol = Color(0,255,0)
-local ang = Angle()
-local min,max = Vector(-8,-8,-8),Vector(8,8,8)
-local cmin,cmax = Vector(-10,-10,-10),Vector(10,10,10)
-local points = {}
 
 function SWEP:Reload()
 	ddterra.OpenBrushMenu(self)
 end
 
 function SWEP:DrawHUD()
-	local owner = self:GetOwner()
-	local tr = owner:GetEyeTrace()
-	local x,y = ddterra.PosToIndex(tr.HitPos)
-	local rad = self:GetRadius()
-	points = ddterra.GetPointsInRadius(x,y,rad,points)
-	local center = ddterra.Points:Get(x,y)
 	local brush = self.Brush
+	local owner = self:GetOwner()
+	local trc = owner:GetEyeTrace()
 	cam.Start3D()
 	render.SetColorMaterial()
-	brush:StartStroke(center)
-
-	for i = 1,points._count do
-		local point = points[i]
-		if !point then continue end
-		local pos = Vector(point.pos)
-		pos[3] = brush:Process(point,owner:KeyDown( IN_SPEED ))
-		render.DrawWireframeBox(point.pos,ang,min,max,pointCol,false)
-		render.DrawWireframeBox(pos,ang,min,max,pointNewCol,false)
-	end
-
-	if center then
-		render.DrawWireframeBox(center.pos,ang,cmin,cmax,centerCol,false)
-	end
-
+	--PrintTable(getmetatable(brush))
+	brush:Preview(trc)
 	cam.End3D()
 end

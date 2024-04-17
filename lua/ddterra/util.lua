@@ -1,7 +1,6 @@
 local round = math.Round
 local floor = math.floor
 local ceil = math.ceil
-local insert = table.insert
 
 local function clamp(v,min,max)
 	return v < min && min || (v > max && max || v)
@@ -20,6 +19,10 @@ function PosToIndex(pos,method)
 	method = method == nil && round || (method && floor || ceil)
 
 	return method(pos[1] / CellSize) + WorldCellOffset,method(pos[2] / CellSize) + WorldCellOffset
+end
+
+function GetPoint(x,y)
+	return Points:GetSafe(x,y)
 end
 
 function GetPointsInRadius(x,y,rad,tab,copy)
@@ -106,4 +109,32 @@ function GetPointAreaChunks(sx,sy,ex,ey)
 	res._count = count
 
 	return res
+end
+
+function GetPointNeighbors(x,y)
+	local res = {}
+	local count = 0
+	local p1,p2,p3,p4 = Points:GetSafe(x,y + 1),Points:GetSafe(x + 1,y),Points:GetSafe(x,y - 1),Points:GetSafe(x - 1,y)
+
+	if p1 then
+		count = count + 1
+		res[count] = p1
+	end
+
+	if p2 then
+		count = count + 1
+		res[count] = p2
+	end
+
+	if p3 then
+		count = count + 1
+		res[count] = p3
+	end
+
+	if p4 then
+		count = count + 1
+		res[count] = p4
+	end
+
+	return res,count
 end

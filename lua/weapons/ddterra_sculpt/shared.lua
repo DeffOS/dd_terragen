@@ -15,23 +15,23 @@ SWEP.PrimaryAttack = function() end
 SWEP.SecondaryAttack = SWEP.PrimaryAttack
 
 function SWEP:SetupDataTables()
-	self:NetworkVar( "String", 0, "BrushType" )
-	self:NetworkVar( "String", 1, "BrushSettings" )
-	self:NetworkVarNotify( "BrushType", self.OnBrushTypeChanged )
-	self:NetworkVarNotify( "BrushSettings", self.OnBrushSettingsChanged )
+	self:NetworkVar("String",0,"BrushType")
+	self:NetworkVar("String",1,"BrushSettings")
+	self:NetworkVarNotify("BrushType",self.OnBrushTypeChanged)
+	self:NetworkVarNotify("BrushSettings",self.OnBrushSettingsChanged)
 end
 
 SWEP.Brush = {}
 
 function SWEP:Initialize()
 	self.Brush = setmetatable({},ddterra.brushes.BaseBrush)
-	-- PrintTable(getmetatable(self.Brush))
 	if SERVER then return end
-	ddterra.RequestBrushChange("radial")
+	ddterra.RequestBrushChange("base_brush")
 end
+
 function SWEP:OnReloaded()
 	if SERVER then return end
-	ddterra.RequestBrushChange("radial")
+	ddterra.RequestBrushChange("base_brush")
 end
 
 function SWEP:OnBrushTypeChanged(_,old,new)
@@ -40,6 +40,8 @@ function SWEP:OnBrushTypeChanged(_,old,new)
 	if !brush then return end
 	rawset(brush,"e_toolwep",self)
 	self.Brush = brush
+	if SERVER then return end
+	ddterra.brushes.SetMenuBrush(self.Brush)
 end
 
 function SWEP:OnBrushSettingsChanged(_,old,new)
@@ -47,13 +49,17 @@ function SWEP:OnBrushSettingsChanged(_,old,new)
 	local brush = self.Brush
 	local settings = util.JSONToTable(new)
 	assert(settings,"Failed to load brush settings!")
-	for _, prop in ipairs(brush.Properties) do
+
+	for _,prop in ipairs(brush.Properties) do
 		local varname = prop[1]
 		local var = settings[varname]
+
 		if var then
 			rawset(brush,varname,var)
 		end
 	end
+	if SERVER then return end
+	ddterra.brushes.UpdateMenuProperties()
 end
 
 if SERVER then
@@ -64,8 +70,16 @@ end
 
 SWEP.Category = "DD Terrain"
 
+SWEP.f_ReloadLastFrame = 0
+
 function SWEP:Reload()
-	ddterra.OpenBrushMenu(self)
+	if FrameNumber() < self.f_ReloadLastFrame + 4 then
+		self.f_ReloadLastFrame = FrameNumber()
+		return
+	end
+	ddterra.brushes.SetMenuBrush(self.Brush)
+	ddterra.brushes.ToggleMenu()
+	self.f_ReloadLastFrame = FrameNumber()
 end
 
 function SWEP:DrawHUD()
@@ -74,7 +88,7 @@ function SWEP:DrawHUD()
 	local trc = owner:GetEyeTrace()
 	cam.Start3D()
 	render.SetColorMaterial()
-	--PrintTable(getmetatable(brush))
+	//PrintTable(getmetatable(brush))
 	brush:Preview(trc)
 	cam.End3D()
 end

@@ -153,16 +153,10 @@ end
 
 local requestSwitch = {
 	[REQUEST_BRUSHCHANGE] = function(ply)
-		local tool = ply:GetWeapon("ddterra_sculpt")
-		if !IsValid(tool) then return end
-		tool:SetBrushType(net.ReadString())
+		brushes.PlayerRequestedType(ply,net.ReadString())
 	end,
 	[REQUEST_BRUSHSETTINGS] = function(ply)
-		local tool = ply:GetWeapon("ddterra_sculpt")
-		if !IsValid(tool) then return end
-		local tab = util.TableToJSON(net.ReadTable())
-		if !tab then return end
-		tool:SetBrushSettings(tab)
+		brushes.PlayerRequestedSettings(ply,net.ReadTable())
 	end
 }
 

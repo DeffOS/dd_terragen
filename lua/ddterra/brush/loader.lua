@@ -4,8 +4,7 @@ local inherit = table.Inherit
 local rawget = rawget
 local type = type
 module("ddterra.brushes",package.seeall)
-AddCSLuaFile("base.lua")
-BaseBrush = include("base.lua")
+BaseBrush = include("base_brush.lua")
 BaseBrush.__index = BaseBrush
 Brushes = Brushes || {}
 
@@ -56,7 +55,12 @@ end
 
 function GetNewBrush(class,old)
 	local brush = Brushes[class:lower()]
-	assert(brush,format("Brush (%s) doesnt exist!",class))
+
+	if !brush then
+		brush = BaseBrush
+		MsgC(Color(255,0,0),format("Brush (%s) doesnt exist!\n",class))
+	end
+
 	local meta = {}
 	solveParent(meta,brush,{})
 	meta.__index = meta
@@ -76,4 +80,15 @@ function GetNewBrush(class,old)
 	end
 
 	return setmetatable(new,meta)
+end
+
+function GetBrushSettings(brush)
+	local res = {}
+
+	for _,prop in ipairs(brush.Properties) do
+		local propname = prop[1]
+		res[propname] = brush[propname] || prop[3]
+	end
+
+	return res
 end

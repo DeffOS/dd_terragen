@@ -1,5 +1,6 @@
 local BRUSH = {}
 BRUSH.Base = "base"
+BRUSH.Abstract = true
 
 function BRUSH:StartStroke(trc)
 	local x,y = ddterra.PosToIndex(trc.HitPos)
@@ -17,7 +18,7 @@ function BRUSH:UpdateStroke(trc)
 end
 
 function BRUSH:EndStroke(trc)
-	self:ApplyStroke(ddterra.PosToIndex(trc.HitPos))
+	//self:ApplyStroke(ddterra.PosToIndex(trc.HitPos))
 end
 
 do

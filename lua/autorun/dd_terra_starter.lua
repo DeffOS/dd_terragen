@@ -23,6 +23,7 @@ server("classes/chunk/sv")
 shared("world")
 shared("util")
 shared("brush/loader")
+shared("brush/core")
 client("brush/menu")
 
 if !game.SinglePlayer() and game.IsDedicated() then return end

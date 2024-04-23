@@ -7,6 +7,16 @@ function SWEP:PrimaryAttack()
 	self.Brush:StartStroke(ply:GetEyeTrace())
 end
 
+
+SWEP.i_SecondaryLastFrame = 0
+
+function SWEP:SecondaryAttack()
+	if FrameNumber() > self.i_SecondaryLastFrame + 4 then
+		self.Brush:Cancel()
+	end
+	self.i_SecondaryLastFrame = FrameNumber()
+end
+
 function SWEP:Think()
 	local ply = self:GetOwner()
 

@@ -9,6 +9,8 @@ require("ddcord")
 
 shared("table2d")
 shared("globals")
+shared("util/events")
+shared("util/channels")
 shared("updater/sh")
 server("updater/sv")
 client("updater/cl")

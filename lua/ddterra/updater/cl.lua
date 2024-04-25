@@ -1,30 +1,34 @@
 module("ddterra",package.seeall)
 
-do
-	local typeSwitch = {
-		[UPDTYPE_POINT] = function()
-			local point = Points[net.ReadUInt(NetUInt_Index)]
-			point:ReadNet()
-			point:Update()
-		end,
-		[UPDTYPE_CELL] = function()
-			Cells[net.ReadUInt(NetUInt_Index)]:ReadNet()
-		end,
-	}
+netchannel.SetCallback("sv.UpdatePoints",function(_,ply)
+	local count = net.ReadUInt(14)
+	for i = 1,count do
+		local point = Points[net.ReadUInt(NetUInt_WorldIndex)]
+		point:ReadNet()
+		point:Update()
+	end
+end)
 
-	net.Receive("ddterra.netchannel",function(len)
-		local type = net.ReadUInt(3)
-		local func = typeSwitch[type]
-		if len <= 0 || !func then return end
-		local count = net.ReadUInt(14)
-		//print("Receiving Net Update",type,count,len)
+netchannel.SetCallback("sv.UpdateCells",function(_,ply)
+	local count = net.ReadUInt(14)
+	for i = 1,count do
+		Cells[net.ReadUInt(NetUInt_WorldIndex)]:ReadNet()
+	end
+end)
 
-		for i = 1,count do
-			func()
-		end
-	end)
+function RequestBrushChange(brushtype)
+	netchannel.Start("cl.BrushTypeChange")
+	net.WriteString(brushtype)
+	net.SendToServer()
 end
 
+function RequestBrushSettingsChange(settings)
+	netchannel.Start("cl.BrushSettingsChange")
+	net.WriteTable(settings)
+	net.SendToServer()
+end
+
+//FIXME: This shit aint working for some ungodly reason, gotta love those client PVS cleanups
 hook.Add("OnRequestFullUpdate","ddterra.fixBounds",function(data)
 	local chunks = Chunks
 
@@ -34,17 +38,3 @@ hook.Add("OnRequestFullUpdate","ddterra.fixBounds",function(data)
 		chunk.Entity:InitBounds()
 	end
 end)
-
-function RequestBrushChange(brushtype)
-	net.Start("ddterra.netchannel")
-	net.WriteUInt(REQUEST_BRUSHCHANGE,3)
-	net.WriteString(brushtype)
-	net.SendToServer()
-end
-
-function RequestBrushSettingsChange(settings)
-	net.Start("ddterra.netchannel")
-	net.WriteUInt(REQUEST_BRUSHSETTINGS,3)
-	net.WriteTable(settings)
-	net.SendToServer()
-end

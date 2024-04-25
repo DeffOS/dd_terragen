@@ -3,7 +3,7 @@ module("ddterra",package.seeall)
 function CELL:MarkAsDirty()
 	if self._dirty then return end
 	self._dirty = true
-	ReportUpdate(UPDTYPE_CELL,self)
+	ReportUpdate("cells",self)
 end
 
 function CELL:SetMatID(trg)

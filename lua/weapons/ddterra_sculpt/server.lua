@@ -7,7 +7,6 @@ function SWEP:PrimaryAttack()
 	self.Brush:StartStroke(ply:GetEyeTrace())
 end
 
-
 SWEP.i_SecondaryLastFrame = 0
 
 function SWEP:SecondaryAttack()

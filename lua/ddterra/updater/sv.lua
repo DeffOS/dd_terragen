@@ -3,21 +3,19 @@ local format = string.format
 local ceil = math.ceil
 local timerName = "ddterra.updatecheckout"
 local updateCoroutine
-local maxMsgBits = 30000
-util.AddNetworkString("ddterra.netchannel")
+local maxMsgBits = 50000
 module("ddterra",package.seeall)
-local bitSizePoint = NetUInt_Index + 14 + 8
-local bitSizeCell = NetUInt_Index + 4 + 1 + 1
+local bitSizePoint = NetUInt_WorldIndex + 15 + 8
+local bitSizeCell = NetUInt_WorldIndex + 4 + 1 + 1
 
 local updateStack = {
-	[UPDTYPE_POINT] = {
+	points = {
 		_count = 0
 	},
-	[UPDTYPE_CELL] = {
+	cells = {
 		_count = 0
 	}
 }
-
 function ReportUpdate(type,class)
 	local stack = updateStack[type]
 
@@ -29,7 +27,7 @@ function ReportUpdate(type,class)
 
 	if timer.Exists(timerName) then return end
 	local thread = coroutine.create(updateCoroutine)
-	coroutine.resume(thread,updateStack[UPDTYPE_POINT],updateStack[UPDTYPE_CELL])
+	coroutine.resume(thread,updateStack.points,updateStack.cells)
 
 	timer.Create(timerName,0.2,0,function()
 		if coroutine.status(thread) == "dead" then
@@ -38,7 +36,6 @@ function ReportUpdate(type,class)
 			return
 		end
 
-		net.Start("ddterra.netchannel")
 		local succ,err = coroutine.resume(thread)
 
 		if !succ then
@@ -47,7 +44,6 @@ function ReportUpdate(type,class)
 
 		if coroutine.status(thread) == "dead" then
 			timer.Remove(timerName)
-			net.Abort()
 
 			return
 		end
@@ -60,20 +56,16 @@ function SendFullUpdate(trg)
 	local trgTimerName = format("%s-%s",timerName,trg)
 	if timer.Exists(trgTimerName) then return end
 	local thread = coroutine.create(updateCoroutine)
-	ddcord.perftest.Start()
 	local points = Points:GetRawClone()
 	local cells = Cells:GetRawClone()
-	ddcord.perftest.End("Created Raws")
 	coroutine.resume(thread,points,cells)
 
-	timer.Create(trgTimerName,0.1,0,function()
+	timer.Create(trgTimerName,0.25,0,function()
 		if !IsValid(trg) || coroutine.status(thread) == "dead" then
 			timer.Remove(trgTimerName)
 
 			return
 		end
-
-		net.Start("ddterra.netchannel")
 		local succ,err = coroutine.resume(thread)
 
 		if !succ then
@@ -82,7 +74,6 @@ function SendFullUpdate(trg)
 
 		if coroutine.status(thread) == "dead" then
 			timer.Remove(trgTimerName)
-			net.Abort()
 
 			return
 		end
@@ -91,24 +82,14 @@ function SendFullUpdate(trg)
 	end)
 end
 
-//hook.Add("OnRequestFullUpdate","ddterra.onFullUpdate",function(data)
-//	local ply = Entity(data.index + 1)
-//	if !IsValid(ply) then return end
-//	print("RequestingUpdate for",ply)
-//	SendFullUpdate(ply)
-//end)
-hook.Add("SetupMove","PlayerInitialized",function(ply,_,cmd)
-	if ply.m_bInitialized || !(cmd:IsForced() || ply:IsBot()) then return end
-	ply.m_bInitialized = true
+hook.Add("OnRequestFullUpdate","ddterra.onFullUpdate",function(data)
+	local ply = Entity(data.index + 1)
+	if !IsValid(ply) then return end
 	print("RequestingUpdate for",ply)
 	SendFullUpdate(ply)
 end)
 
 do
-	local function WriteUpdType(type)
-		net.WriteUInt(type,3)
-	end
-
 	local function sendStack(stack,bitsize)
 		local count = stack._count
 		local bitcount = ceil(maxMsgBits / bitsize)
@@ -121,7 +102,7 @@ do
 
 		for i = 1,count do
 			local entry = stack[1]
-			net.WriteUInt(entry:GetID(),NetUInt_Index)
+			net.WriteUInt(entry:GetID(),NetUInt_WorldIndex)
 			entry:WriteNet()
 			entry._dirty = false
 			stack._count = stack._count - 1
@@ -136,33 +117,23 @@ do
 		coroutine.yield()
 
 		if points._count > 0 then
-			WriteUpdType(UPDTYPE_POINT)
+			netchannel.Start("sv.UpdatePoints")
 			sendStack(points,bitSizePoint)
 			goto RETREAT
 		end
 
 		if cells._count > 0 then
-			WriteUpdType(UPDTYPE_CELL)
+			netchannel.Start("sv.UpdateCells")
 			sendStack(cells,bitSizeCell)
 			goto RETREAT
 		end
-
-		net.Abort()
 	end
 end
 
-local requestSwitch = {
-	[REQUEST_BRUSHCHANGE] = function(ply)
-		brushes.PlayerRequestedType(ply,net.ReadString())
-	end,
-	[REQUEST_BRUSHSETTINGS] = function(ply)
-		brushes.PlayerRequestedSettings(ply,net.ReadTable())
-	end
-}
+netchannel.SetCallback("cl.BrushTypeChange",function(_,ply)
+	brushes.PlayerRequestedType(ply,net.ReadString())
+end)
 
-net.Receive("ddterra.netchannel",function(len,ply)
-	local requestType = net.ReadUInt(3)
-	local func = requestSwitch[requestType]
-	if !func then return end
-	func(ply)
+netchannel.SetCallback("cl.BrushSettingsChange",function(_,ply)
+	brushes.PlayerRequestedSettings(ply,net.ReadTable())
 end)

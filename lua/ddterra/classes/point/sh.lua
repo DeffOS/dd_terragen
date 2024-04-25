@@ -45,12 +45,12 @@ do
 	end
 
 	function POINT:WriteNet()
-		net.WriteInt(self.pos[3],14)
+		net.WriteInt(self.pos[3],15)
 		net.WriteUInt(self.color.a,8)
 	end
 
 	function POINT:ReadNet()
-		self.pos[3] = net.ReadInt(14)
+		self.pos[3] = net.ReadInt(15)
 		self.color.a = net.ReadUInt(8)
 	end
 end

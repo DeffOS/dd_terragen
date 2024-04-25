@@ -7,16 +7,32 @@ function ENT:SetupDataTables()
 end
 
 do
-	// TODO: Заполнить список
-	local whitelist = {}
 
-	function ENT:CanTool(ply,trace,mode,tool,button)
-		return whitelist[mode]
-	end
-
-	function ENT:CanProperty(ply,prop)
+	function ENT:CanTool()
 		return false
 	end
+
+	function ENT:CanProperty()
+		return false
+	end
+	// Credit to PrikolMen for that pseudo world catch
+	// ULib support ( I really don't like this )
+	if file.Exists("ulib/shared/hook.lua","LUA") then
+		include("ulib/shared/hook.lua")
+	end
+
+	local GetWorld = game.GetWorld
+	local hookRun = hook.Run
+
+	hook.Add("CanTool","ddterra.ChunkAsWorld",function(ply,trace,...)
+		local ent = trace.Entity
+
+		if IsValid(ent) && ent.ddterra_chunk then
+			trace.Entity = GetWorld()
+
+			return hookRun("CanTool",ply,trace,...)
+		end
+	end,PRE_HOOK_RETURN || HOOK_MONITOR_HIGH)
 
 	hook.Add("PhysgunPickup","ddterra.hellno",function(_,ent)
 		if ent.ddterra_chunk then return false end
@@ -41,15 +57,6 @@ end || function(self)
 	self:InitMesh()
 end
 
-ENT.Think = CLIENT && function(self,phys)
-	local physobj = self:GetPhysicsObject()
-
-	if IsValid(physobj) then
-		physobj:SetPos(self:GetPos())
-		physobj:SetAngles(self:GetAngles())
-	end
-end || function() end
-
 function ENT:InitChunkData()
 	local chunk = ddterra.Chunks[self:GetChunkIndex()]
 	chunk.Entity = self
@@ -68,22 +75,30 @@ function ENT:InitCollision()
 end
 
 if SERVER then return end
-ENT.isInitialized = false
 
 function ENT:InitBounds()
 	self:SetRenderBoundsWS(self.Chunk:GetBounds())
 end
 
-hook.Add("NotifyShouldTransmit","ddterra.cunt",function(ent,trs)
-	if !ent.ddterra_chunk then return end
-	ent:InitChunkData()
-	ent:InitBounds()
-end)
+hook.Add( "NotifyShouldTransmit", "ddterra.chunkfix", function( entity, shouldTransmit )
+	if !shouldTransmit || !entity.ddterra_chunk then return end
+	//entity:InitChunkData()
+	entity:InitBounds()
+	// self:InitCollision()
+end )
 
-//ent:InitCollision()
-//ent.isInitialized = true
+// Clientside PVS AntiDeletion mesure for chunks
+function ENT:Think()
+	if self:IsDormant() then return end
+	local physobj = self:GetPhysicsObject()
+
+	if IsValid(physobj) then
+		physobj:SetPos(self:GetPos())
+		physobj:SetAngles(self:GetAngles())
+	end
+end
+
 local mat = Material("dev/dev_blendmeasure")
-//local mat = Material("metal2")
 local boundCol = Color(255,153,0,1)
 
 function ENT:InitMesh()

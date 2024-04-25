@@ -20,6 +20,7 @@ end
 function CHUNK:UpdateEntity()
 	local ent = self.Entity
 	if !IsValid(ent) then return end
+	print("Updating mesh")
 	ent:UpdateMesh()
 end
 

@@ -3,7 +3,7 @@ module("ddterra",package.seeall)
 function POINT:MarkAsDirty()
 	if self._dirty then return end
 	self._dirty = true
-	ReportUpdate(UPDTYPE_POINT,self)
+	ReportUpdate("points",self)
 end
 
 function POINT:SetHeight(amount)

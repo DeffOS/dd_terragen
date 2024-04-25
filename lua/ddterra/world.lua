@@ -5,9 +5,9 @@ module("ddterra",package.seeall)
 
 -- if Points and Cells and Chunks then return end
 
-Points = Table2D(WorldCellCount + 1)
-Cells = Table2D(WorldCellCount)
-Chunks = Table2D(WorldChunkCount)
+Points = Points or Table2D(WorldCellCount + 1)
+Cells = Cells or Table2D(WorldCellCount)
+Chunks = Chunks or Table2D(WorldChunkCount)
 -- function index(x,y) return format("%i|%i",x,y) end
 -- function index(x,y) return x * WorldCellCount + y end
 
@@ -53,6 +53,14 @@ concommand.Add("ddterra.initialize",function()
 	for _,ent in ipairs(ents.FindByClass("ddterra_chunk")) do
 		ent:Remove()
 	end
+	for _,chunk in Chunks:ForEachIndex() do
+		chunk:CreateEntity()
+	end
+end)
+
+if CLIENT then return end
+
+hook.Add("PostCleanupMap", "ddterra.cleanup", function()
 	for _,chunk in Chunks:ForEachIndex() do
 		chunk:CreateEntity()
 	end

@@ -2,12 +2,12 @@ local ceil = math.ceil
 local log = math.log
 gameevent.Listen( "OnRequestFullUpdate" )
 module("ddterra",package.seeall)
-REQUEST_FULLUPDATE = 0
-REQUEST_BRUSHCHANGE = 1
-REQUEST_BRUSHSETTINGS = 2
-UPDTYPE_POINT = 1
-UPDTYPE_CELL = 2
-NetUInt_Index = ceil(log((WorldCellCount + 1) ^ 2,2))
+netchannel.RegisterKey("sv.UpdatePoints")
+netchannel.RegisterKey("sv.UpdateCells")
+netchannel.RegisterKey("cl.Fullupdate")
+netchannel.RegisterKey("cl.BrushTypeChange")
+netchannel.RegisterKey("cl.BrushSettingsChange")
+NetUInt_WorldIndex = ceil(log((WorldCellCount + 1) ^ 2 + 1,2))
 
 do
 	local TimerBody
